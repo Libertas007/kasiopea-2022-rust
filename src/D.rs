@@ -5,17 +5,10 @@ use std::io::{self, Read, Write};
 use std::time::Instant;
 
 fn main() {
-    println!("Zadejte zadání: ");
-    let input = read_line();
-    let input = input.trim();
 
-    if input == String::from("D") {
-        let start = Instant::now();
-        solve(read_file(&String::from("D.txt")));
-        println!("Vyřešeno za {:?}", start.elapsed());
-    } else {
-        println!("Nenalezeno");
-    }
+    let start = Instant::now();
+    solve(read_file(&String::from("D.txt")));
+    println!("Vyřešeno za {:?}", start.elapsed());
 }
 
 #[derive(Clone)]
@@ -138,7 +131,8 @@ pub fn solve(input: String) {
                     ys.push(graf[current].y);
                 }
 
-                let area = (xs.iter().max().unwrap() - xs.iter().min().unwrap() + 1) * (ys.iter().max().unwrap() - ys.iter().min().unwrap() + 1);
+                let area = (xs.iter().max().unwrap() - xs.iter().min().unwrap() + 1)
+                    * (ys.iter().max().unwrap() - ys.iter().min().unwrap() + 1);
                 total_area += area;
             }
         }
@@ -157,8 +151,8 @@ pub fn solve(input: String) {
 pub fn read_line() -> String {
     let mut val = String::new();
     io::stdin()
-    .read_line(&mut val)
-    .expect("Failed to read line");
+        .read_line(&mut val)
+        .expect("Failed to read line");
     val
 }
 

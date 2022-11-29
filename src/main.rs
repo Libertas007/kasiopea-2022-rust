@@ -6,24 +6,34 @@ use std::time::Instant;
 
 fn main() {
     println!("Zadejte zadání: ");
-    let input = read_line();
-    let input = input.trim();
 
-    if input == String::from("D") {
-        let start = Instant::now();
-        solve(read_file(&String::from("D.txt")));
-        println!("Vyřešeno za {:?}", start.elapsed());
-    } else {
-        println!("Nenalezeno");
-    }
+    let start = Instant::now();
+    solve(read_file(&String::from("E.txt")));
+    println!("Vyřešeno za {:?}", start.elapsed());
 }
 
-#[derive(Clone)]
-struct Node {
-    x: usize,
-    y: usize,
-    neighbours: Vec<usize>,
-    id: usize,
+pub fn deeper(layer: &usize, vyznamy: &Vec<Vec<usize>>, max: &usize, used: &usize) -> usize {
+    let mut moznosti: usize = 0;
+
+    for vyznam in &vyznamy[*layer] {
+        if vyznam + used > *max {
+            continue;
+        }
+
+        if vyznam + used == *max {
+            if layer + 1 == vyznamy.len() {
+                moznosti += 1;
+                continue;
+            }
+        }
+
+        if layer + 1 == vyznamy.len() {
+            continue;
+        }
+
+        moznosti += deeper(&(layer + 1), vyznamy, max, &(used + vyznam));
+    }
+    return moznosti;
 }
 
 pub fn solve(input: String) {
@@ -40,118 +50,101 @@ pub fn solve(input: String) {
         println!("Vyřešeno {} z {} problémů...", i, problems);
 
         let data: Vec<&str> = splitted[line_pointer].split(" ").collect();
-        let pocet_lesu = data[2];
-        let pocet_lesu: usize = pocet_lesu.parse().unwrap();
+        println!("{:?}", data);
+        let pocet_vyznamu = data[0];
+        let pocet_vyznamu: usize = pocet_vyznamu.parse().unwrap();
+        let max_jednicek = data[1];
+        let max_jednicek: usize = max_jednicek.parse().unwrap();
 
-        let mut graf: Vec<Node> = vec![];
+        let mut vyznamy: Vec<Vec<usize>> = vec![];
+
+        //        let mut speed = String::new();
+        //        let start = Instant::now();
         let mut j = 0;
 
-        let mut map: HashMap<(usize, usize), usize> = HashMap::new();
-
-//        let mut speed = String::new();
-//        let start = Instant::now();
-
-        while j != pocet_lesu {
+        while j != pocet_vyznamu {
             j += 1;
 
-//            println!(
-//                "Les čislo {}/{} (čas: {:?})",
-//                j,
-//                pocet_lesu,
-//                start.elapsed(),
-//            );
-//
-//            if j % 10_000 == 0 {
-//                speed += &format!("{:?} za {} lesů\n", start.elapsed(), j).to_string();
-//                fs::write(format!("./speed{}", i), &speed).unwrap();
-//            }
+            line_pointer += 2;
+            let mozne_vyznamy: Vec<&str> = splitted[line_pointer].split(" ").collect();
 
+            let mozne_vyznamy: Vec<usize> = mozne_vyznamy
+                .iter()
+                .map(|e| {
+                    let e: usize = e.parse().unwrap();
+                    return format!("{:b}", e).matches("1").count();
+                })
+                .filter(|&e| e <= max_jednicek)
+                .collect();
+
+            vyznamy.push(mozne_vyznamy);
+        }
+
+        if vyznamy.iter().any(|e| e.is_empty()) {
+            out += "0\n";
             line_pointer += 1;
-            let data: Vec<&str> = splitted[line_pointer].split(" ").collect();
-            let x: usize = data[0].parse().unwrap();
-            let y: usize = data[1].parse().unwrap();
-            let id = graf.len();
-
-            graf.push(Node {
-                x,
-                y,
-                neighbours: vec![],
-                id,
-            });
-
-            map.insert((x, y), id);
-
-            if map.contains_key(&(x, y + 1)) {
-                let neighbourId = map.get(&(x, y + 1)).unwrap().to_owned();
-                graf[id].neighbours.push(neighbourId);
-                if !graf[neighbourId].neighbours.contains(&id) {
-                    graf[neighbourId].neighbours.push(id);
-                }
-            }
-
-            if map.contains_key(&(x, y - 1)) {
-                let neighbourId = map.get(&(x, y - 1)).unwrap().to_owned();
-                graf[id].neighbours.push(neighbourId);
-                if !graf[neighbourId].neighbours.contains(&id) {
-                    graf[neighbourId].neighbours.push(id);
-                }
-            }
-
-            if map.contains_key(&(x + 1, y)) {
-                let neighbourId = map.get(&(x + 1, y)).unwrap().to_owned();
-                graf[id].neighbours.push(neighbourId);
-                if !graf[neighbourId].neighbours.contains(&id) {
-                    graf[neighbourId].neighbours.push(id);
-                }
-            }
-
-            if map.contains_key(&(x - 1, y)) {
-                let neighbourId = map.get(&(x - 1, y)).unwrap().to_owned();
-                graf[id].neighbours.push(neighbourId);
-                if !graf[neighbourId].neighbours.contains(&id) {
-                    graf[neighbourId].neighbours.push(id);
-                }
-            }
+            println!("Vyřešeno {} z {} problémů...", i, problems);
+            i += 1;
+            continue;
         }
 
-        let mut total_area: usize = 0;
+        let mut map: HashMap<usize, usize> = HashMap::from([(0, 1)]);
+        let mut layer = 0;
 
-        let mut visited = vec![false; pocet_lesu];
+        for vyznam in &vyznamy {
+            //println!("=====");
+            //println!("map: {:?}", map);
+            let mut new_map: HashMap<usize, usize> = HashMap::new();
 
-        for node in &graf {
-            if visited[node.id] == false {
-                let mut queue: Vec<usize> = vec![node.id];
-                let mut xs: Vec<usize> = vec![];
-                let mut ys: Vec<usize> = vec![];
+            for v in vyznam {
+                let test: Vec<(usize, usize)> = map.iter().map(|e| (*e.0 + v, *e.1)).collect();
+                let test: HashMap<usize, usize> = HashMap::from_iter(test.into_iter());
+                //println!("| test for {}: {:?}", v, test);
 
-                while queue.len() != 0 {
-                    let current = queue.remove(0);
-//                    println!("{:?}", queue);
-                    visited[current] = true;
-                    let neighbours = graf[current].neighbours.to_vec();
-                    for n in neighbours {
-                        if !queue.contains(&n) && visited[n] == false {
-                            queue.push(n);
-                        }
+                for (k, v) in test {
+                    if new_map.contains_key(&k) {
+                        *new_map.get_mut(&k).unwrap() += v;
+                    } else {
+                        new_map.insert(k, v);
                     }
-                    xs.push(graf[current].x);
-                    ys.push(graf[current].y);
                 }
-
-                let area = (xs.iter().max().unwrap() - xs.iter().min().unwrap() + 1) * (ys.iter().max().unwrap() - ys.iter().min().unwrap() + 1);
-                total_area += area;
             }
+
+            //println!("new_map: {:?}", new_map);
+
+            let copy = vyznamy.clone();
+
+            if layer + 1 != vyznamy.len() {
+                let max: usize = (&copy[(layer + 1)..])
+                    .into_iter()
+                    .map(|e| e.into_iter().max().unwrap())
+                    .sum();
+                let min: usize = (&copy[(layer + 1)..])
+                    .into_iter()
+                    .map(|e| e.into_iter().max().unwrap())
+                    .sum();
+
+                new_map = new_map
+                    .into_iter()
+                    .filter(|&e| e.0 + max >= max_jednicek || e.0 + min <= max_jednicek)
+                    .collect();
+            }
+
+            map = new_map
+                .into_iter()
+                .filter(|&e| e.0 <= max_jednicek).collect();
+
+            layer += 1;
         }
 
-        out += &total_area.to_string();
-        out += "\n";
+        let moznosti: usize = map[&max_jednicek];
 
         line_pointer += 1;
         println!("Vyřešeno {} z {} problémů...", i, problems);
-        println!("{} cells", total_area);
+        out += &format!("{}\n", moznosti);
         i += 1;
     }
-    fs::write("D.out", out).unwrap();
+    fs::write("E.out", out).unwrap();
 }
 
 pub fn read_line() -> String {
