@@ -8,32 +8,12 @@ fn main() {
     println!("Zadejte zadání: ");
 
     let start = Instant::now();
-    solve(read_file(&String::from("E.txt")));
+    solve(read_file(&String::from("G.txt")));
     println!("Vyřešeno za {:?}", start.elapsed());
 }
 
-pub fn deeper(layer: &usize, vyznamy: &Vec<Vec<usize>>, max: &usize, used: &usize) -> usize {
-    let mut moznosti: usize = 0;
-
-    for vyznam in &vyznamy[*layer] {
-        if vyznam + used > *max {
-            continue;
-        }
-
-        if vyznam + used == *max {
-            if layer + 1 == vyznamy.len() {
-                moznosti += 1;
-                continue;
-            }
-        }
-
-        if layer + 1 == vyznamy.len() {
-            continue;
-        }
-
-        moznosti += deeper(&(layer + 1), vyznamy, max, &(used + vyznam));
-    }
-    return moznosti;
+pub fn is_between(low: isize, mid: isize, high: isize) -> bool {
+    low <= mid && mid <= high
 }
 
 pub fn solve(input: String) {
@@ -47,104 +27,132 @@ pub fn solve(input: String) {
     let mut out = String::new();
 
     while problems != i {
-        println!("Vyřešeno {} z {} problémů...", i, problems);
+        println!("Řeším {}. z {} problémů...", i + 1, problems);
 
         let data: Vec<&str> = splitted[line_pointer].split(" ").collect();
         println!("{:?}", data);
-        let pocet_vyznamu = data[0];
-        let pocet_vyznamu: usize = pocet_vyznamu.parse().unwrap();
-        let max_jednicek = data[1];
-        let max_jednicek: usize = max_jednicek.parse().unwrap();
+        let pocet_bakterii = data[0];
+        let pocet_bakterii: isize = pocet_bakterii.parse().unwrap();
+        let time = data[1];
+        let time: isize = time.parse().unwrap();
 
-        let mut vyznamy: Vec<Vec<usize>> = vec![];
+        let mut bakterie: Vec<(isize, isize)> = vec![];
 
-        //        let mut speed = String::new();
-        //        let start = Instant::now();
         let mut j = 0;
-
-        while j != pocet_vyznamu {
+        while j != pocet_bakterii {
             j += 1;
 
-            line_pointer += 2;
-            let mozne_vyznamy: Vec<&str> = splitted[line_pointer].split(" ").collect();
-
-            let mozne_vyznamy: Vec<usize> = mozne_vyznamy
-                .iter()
-                .map(|e| {
-                    let e: usize = e.parse().unwrap();
-                    return format!("{:b}", e).matches("1").count();
-                })
-                .filter(|&e| e <= max_jednicek)
-                .collect();
-
-            vyznamy.push(mozne_vyznamy);
-        }
-
-        if vyznamy.iter().any(|e| e.is_empty()) {
-            out += "0\n";
             line_pointer += 1;
-            println!("Vyřešeno {} z {} problémů...", i, problems);
-            i += 1;
-            continue;
+            let pos: Vec<isize> = splitted[line_pointer].split(" ").map(|e| {
+                let r: isize = e.parse().unwrap();
+                r
+            }).collect();
+
+            bakterie.push((pos[0], pos[1]));
         }
 
-        let mut map: HashMap<usize, usize> = HashMap::from([(0, 1)]);
-        let mut layer = 0;
+        let max_area = pocet_bakterii * (2 * time + 1) * (2 * time + 1);
+        let mut subtract = 0;
+        let mut valued: Vec<((isize, isize), (isize, isize))> = vec![];
 
-        for vyznam in &vyznamy {
-            //println!("=====");
-            //println!("map: {:?}", map);
-            let mut new_map: HashMap<usize, usize> = HashMap::new();
+        let mut searched: Vec<((isize, isize), (isize, isize))> = vec![];
 
-            for v in vyznam {
-                let test: Vec<(usize, usize)> = map.iter().map(|e| (*e.0 + v, *e.1)).collect();
-                let test: HashMap<usize, usize> = HashMap::from_iter(test.into_iter());
-                //println!("| test for {}: {:?}", v, test);
-
-                for (k, v) in test {
-                    if new_map.contains_key(&k) {
-                        *new_map.get_mut(&k).unwrap() += v;
-                    } else {
-                        new_map.insert(k, v);
-                    }
+        for b in &bakterie {
+            println!("Bakterie {:?}", b);
+            for n in &bakterie {
+                if b == n {
+                    continue;
                 }
+
+                if searched.contains(&(*b, *n)) || searched.contains(&(*n, *b)) {
+                    continue;
+                }
+
+                println!("| Pár s {:?}", n);
+                let dx = n.0 - b.0;
+                let dy = n.1 - b.1;
+
+                let w = 2 * time - dx.abs() + 1;
+                let h = 2 * time - dy.abs() + 1;
+                println!("  | Výška a šířka: {}, {}", w, h);
+
+                if w < 0 || h < 0 {
+                    searched.push((*b, *n));
+                    continue;
+                }
+
+                let mut area = w * h;
+
+                let mut xfactor = time;
+                if dx < 0 {
+                    xfactor = -time;
+                }
+
+                let mut yfactor = time;
+                if dy < 0 {
+                    yfactor = -time;
+                }
+
+                let mut e1 = (b.0 + xfactor, n.1 - yfactor);
+                let mut e2 = (n.0 - xfactor, b.1 + yfactor);
+
+                if e1.0 > e2.0 {
+                    (e1, e2) = (e2, e1);
+                }
+
+                if e1.1 > e2.1 {
+                    (e1.1, e2.1) = (e2.1, e1.1);
+                }
+
+                println!("  | Okraje: {:?}, {:?}", e1, e2);
+                println!("  | Test na překrytí:");
+                for v in &valued {
+                    let between_x0 = is_between(v.0.0, e1.0, v.1.0);
+                    let between_x1 = is_between(v.0.0, e2.0, v.1.0);
+                    let between_y0 = is_between(v.0.1, e1.1, v.1.1);
+                    let between_y1 = is_between(v.0.1, e2.1, v.1.1);
+
+                    if !((between_x0 || between_x1) && (between_y0 || between_y1)) {
+                        continue;
+                    }
+
+                    let o1: (isize, isize);
+                    let o2: (isize, isize);
+
+                    if between_x0 {
+                        o1 = (e1.0, v.0.1);
+                    } else {
+                        o1 = (e2.0, v.0.1);
+                    }
+
+                    if between_y0 {
+                        o2 = (v.1.0, e1.1);
+                    } else {
+                        o2 = (v.1.0, e2.1);
+                    }
+
+                    println!("    | Okraje jsou: {:?}, {:?}", o1, o2);
+
+                    area -= (o1.0 - o2.0).abs() * (o1.1 - o2.0).abs();
+                }
+
+
+                subtract += area;
+                valued.push((e1, e2));
+                searched.push((*b, *n));
             }
-
-            //println!("new_map: {:?}", new_map);
-
-            let copy = vyznamy.clone();
-
-            if layer + 1 != vyznamy.len() {
-                let max: usize = (&copy[(layer + 1)..])
-                    .into_iter()
-                    .map(|e| e.into_iter().max().unwrap())
-                    .sum();
-                let min: usize = (&copy[(layer + 1)..])
-                    .into_iter()
-                    .map(|e| e.into_iter().max().unwrap())
-                    .sum();
-
-                new_map = new_map
-                    .into_iter()
-                    .filter(|&e| e.0 + max >= max_jednicek || e.0 + min <= max_jednicek)
-                    .collect();
-            }
-
-            map = new_map
-                .into_iter()
-                .filter(|&e| e.0 <= max_jednicek).collect();
-
-            layer += 1;
         }
 
-        let moznosti: usize = map[&max_jednicek];
+        let area = max_area - subtract;
 
+        println!("{:?}", bakterie);
+        println!("area: {}, max area: {}", area, max_area);
         line_pointer += 1;
-        println!("Vyřešeno {} z {} problémů...", i, problems);
-        out += &format!("{}\n", moznosti);
+        out += &format!("{:?}\n", area);
         i += 1;
+        println!("Vyřešeno {} z {} problémů...", i, problems);
     }
-    fs::write("E.out", out).unwrap();
+    fs::write("G.out", out).unwrap();
 }
 
 pub fn read_line() -> String {
