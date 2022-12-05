@@ -30,7 +30,7 @@ pub fn solve(input: String) {
         println!("Řeším {}. z {} problémů...", i + 1, problems);
 
         let data: Vec<&str> = splitted[line_pointer].split(" ").collect();
-        println!("{:?}", data);
+        // println!("{:?}", data);
         let pocet_bakterii = data[0];
         let pocet_bakterii: isize = pocet_bakterii.parse().unwrap();
         let time = data[1];
@@ -58,7 +58,7 @@ pub fn solve(input: String) {
         let mut searched: Vec<((isize, isize), (isize, isize))> = vec![];
 
         for b in &bakterie {
-            println!("Bakterie {:?}", b);
+            //println!("Bakterie {:?}", b);
             for n in &bakterie {
                 if b == n {
                     continue;
@@ -68,13 +68,13 @@ pub fn solve(input: String) {
                     continue;
                 }
 
-                println!("| Pár s {:?}", n);
+                //println!("| Pár s {:?}", n);
                 let dx = n.0 - b.0;
                 let dy = n.1 - b.1;
 
                 let w = 2 * time - dx.abs() + 1;
                 let h = 2 * time - dy.abs() + 1;
-                println!("  | Výška a šířka: {}, {}", w, h);
+                //println!("  | Výška a šířka: {}, {}", w, h);
 
                 if w < 0 || h < 0 {
                     searched.push((*b, *n));
@@ -104,38 +104,40 @@ pub fn solve(input: String) {
                     (e1.1, e2.1) = (e2.1, e1.1);
                 }
 
-                println!("  | Okraje: {:?}, {:?}", e1, e2);
-                println!("  | Test na překrytí:");
-                for v in &valued {
-                    let between_x0 = is_between(v.0.0, e1.0, v.1.0);
-                    let between_x1 = is_between(v.0.0, e2.0, v.1.0);
-                    let between_y0 = is_between(v.0.1, e1.1, v.1.1);
-                    let between_y1 = is_between(v.0.1, e2.1, v.1.1);
+//                println!("  | Okraje: {:?}, {:?}", e1, e2);
+//                println!("  | Oblast: {}", area);
+//                println!("  | Test na překrytí:");
+                let mut points: Vec<(isize, isize)> = vec![];
 
-                    if !((between_x0 || between_x1) && (between_y0 || between_y1)) {
-                        continue;
-                    }
+                for v in &valued {
+//                    let between_x0 = is_between(v.0.0, e1.0, v.1.0);
+//                    let between_x1 = is_between(v.0.0, e2.0, v.1.0);
+//                    let between_y0 = is_between(v.0.1, e1.1, v.1.1);
+//                    let between_y1 = is_between(v.0.1, e2.1, v.1.1);
+//
+//                    if !((between_x0 || between_x1) && (between_y0 || between_y1)) {
+//                        continue;
+//                    }
 
                     let o1: (isize, isize);
                     let o2: (isize, isize);
 
-                    if between_x0 {
-                        o1 = (e1.0, v.0.1);
-                    } else {
-                        o1 = (e2.0, v.0.1);
+                    o1 = (e1.0.max(v.0.0), e1.1.max(v.0.1));
+                    o2 = (e2.0.min(v.1.0), e2.1.min(v.1.1));
+
+                    // println!("    | Okraje pro {:?}, {:?} jsou: {:?}, {:?}", v.0, v.1, o1, o2);
+
+                    for sub_x in o1.0..(o2.0 + 1) {
+                        for sub_y in o1.1..(o2.1 + 1) {
+                            if !points.contains(&(sub_x, sub_y)) {
+                                points.push((sub_x, sub_y))
+                            }
+                        }
                     }
 
-                    if between_y0 {
-                        o2 = (v.1.0, e1.1);
-                    } else {
-                        o2 = (v.1.0, e2.1);
-                    }
-
-                    println!("    | Okraje jsou: {:?}, {:?}", o1, o2);
-
-                    area -= (o1.0 - o2.0).abs() * (o1.1 - o2.0).abs();
                 }
-
+                area -= points.len() as isize;
+                // println!("  | Oblast po odečtení: {}", area);
 
                 subtract += area;
                 valued.push((e1, e2));
